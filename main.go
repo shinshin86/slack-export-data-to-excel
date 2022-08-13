@@ -35,7 +35,7 @@ type Reaction struct {
 	Users      []User
 }
 
-type Replie struct {
+type Reply struct {
 	UserId    string `json:"user"`
 	TimeStamp string `json:"ts"`
 }
@@ -51,7 +51,7 @@ type Post struct {
 	ParentUserId    string `json:"parent_user_id"`
 	User            User
 	Reactions       []Reaction
-	Replies         []Replie `json:"replies"`
+	Replies         []Reply `json:"replies"`
 }
 
 type ThreadPost struct {
