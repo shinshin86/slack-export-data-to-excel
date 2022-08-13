@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -53,6 +54,13 @@ type Post struct {
 	Replies         []Replie `json:"replies"`
 }
 
+type ThreadPost struct {
+	ParentIndex    int
+	ReplyUser      User
+	ReplyTimeStamp string
+	ParentPost     Post
+}
+
 func getUsers(dirname string) []User {
 	raw, err := ioutil.ReadFile(filepath.Join(dirname, "users.json"))
 	if err != nil {
@@ -95,6 +103,15 @@ func getRow(index int) string {
 	return "A" + strconv.Itoa(index+1)
 }
 
+func getUnixTime(ts string) time.Time {
+	datetime, err := strconv.ParseInt(strings.Split(ts, ".")[0], 10, 64)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	return time.Unix(datetime, 0)
+}
+
 func writeSheets(f *excelize.File, dirname string, channels []Channel, users []User) {
 	// write row of cell
 	var row string
@@ -108,11 +125,14 @@ func writeSheets(f *excelize.File, dirname string, channels []Channel, users []U
 			os.Exit(1)
 		}
 
+		sort.Strings(files)
+
 		// header
 		header := &[]interface{}{"index", "user", "text", "thread", "reactions", "datetime"}
 		f.SetSheetRow(channel.Name, "A1", header)
 
 		var index = 1
+		var threadPosts []ThreadPost
 
 		for _, file := range files {
 			raw, err := ioutil.ReadFile(file)
@@ -145,30 +165,27 @@ func writeSheets(f *excelize.File, dirname string, channels []Channel, users []U
 				}
 
 				// convert datetime
-				datetime, err := strconv.ParseInt(strings.Split(post.TimeStamp, ".")[0], 10, 64)
-				if err != nil {
-					fmt.Println(err)
-					os.Exit(1)
-				}
-				dt := time.Unix(datetime, 0)
+				dt := getUnixTime(post.TimeStamp)
 
 				var threadData string
 
 				if len(post.Replies) > 0 {
-					threadData = "Thread data:\n"
+					threadData = "Thread posts:\n"
 
 					for i, r := range post.Replies {
 						// convert datetime
-						replieDatetime, err := strconv.ParseInt(strings.Split(r.TimeStamp, ".")[0], 10, 64)
-						if err != nil {
-							fmt.Println(err)
-							os.Exit(1)
-						}
-						formattedDt := time.Unix(replieDatetime, 0).Format("2006/1/2 15:04:05")
+						formattedDt := getUnixTime(r.TimeStamp).Format("2006/1/2 15:04:05")
 
 						idx := slices.IndexFunc(users, func(user User) bool { return user.Id == r.UserId })
 
 						d := strconv.Itoa(i+1) + ": " + users[idx].Name + "(" + formattedDt + ")"
+
+						threadPosts = append(threadPosts, ThreadPost{
+							ParentIndex:    index,
+							ReplyUser:      users[idx],
+							ReplyTimeStamp: r.TimeStamp,
+							ParentPost:     post,
+						})
 
 						if i < len(post.Replies)-1 {
 							d = d + "\n"
@@ -177,8 +194,19 @@ func writeSheets(f *excelize.File, dirname string, channels []Channel, users []U
 						threadData = threadData + d
 					}
 				} else if post.ParentUserId != "" {
-					idx := slices.IndexFunc(users, func(user User) bool { return user.Id == post.ParentUserId })
-					threadData = "Thread parent user:\n" + users[idx].Name
+					// Since the json files are read in chronological order,
+					// it is always assumed that the relevant thread data already exists.
+					parentIdx := slices.IndexFunc(threadPosts, func(threadPost ThreadPost) bool { return threadPost.ReplyTimeStamp == post.TimeStamp })
+
+					if parentIdx == -1 || threadPosts[parentIdx].ParentPost.User.Id != post.ParentUserId {
+						fmt.Println("ERROR: Found invalid thread data")
+						os.Exit(1)
+					}
+
+					threadData = "Thread parent index: " + strconv.Itoa(threadPosts[parentIdx].ParentIndex)
+
+					// remove threadPosts
+					threadPosts = append(threadPosts[:parentIdx], threadPosts[parentIdx+1:]...)
 				}
 
 				row = getRow(index)
