@@ -17,9 +17,26 @@ go install github.com/shinshin86/slack-export-data-to-excel@latest
 slack-export-data-to-excel <export data path>
 ```
 
+## Output data for Excel
+
+* index
+  * An index automatically given by the program that is assigned to each channel.
+* user
+  * The output is in the format `real_name(id)`.
+* text
+  * Posted text.
+* thread
+  * The information is output only if the thread exists.
+    * If the post is the root of a thread, information about child threads is output.
+    * If the post was made to a thread, the index of the root post is output.
+* reactions
+  * Reactions are output in the format `emoji(count) - [reaction users]`.
+* datetime
+  * The date and time of the post will be output.
+
 ## License
 
-MIT
+[MIT](https://github.com/shinshin86/slack-export-data-to-excel/blob/main/LICENSE)
 
 ## Author
 
