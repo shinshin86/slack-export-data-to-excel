@@ -104,11 +104,10 @@ func writeSheets(f *excelize.File, dirname string, channels []Channel, users []U
 		}
 
 		// header
-		header := &[]interface{}{"user", "text", "thread", "reactions", "datetime"}
+		header := &[]interface{}{"index", "user", "text", "thread", "reactions", "datetime"}
 		f.SetSheetRow(channel.Name, "A1", header)
 
-		// excluding header
-		var index = 2
+		var index = 1
 
 		for _, file := range files {
 			raw, err := ioutil.ReadFile(file)
@@ -177,10 +176,10 @@ func writeSheets(f *excelize.File, dirname string, channels []Channel, users []U
 					threadData = "Thread parent user:\n" + users[idx].Name
 				}
 
-				// A2, A3...
-				row = "A" + strconv.Itoa(index)
+				// excluding header (A2, A3...)
+				row = "A" + strconv.Itoa(index+1)
 				username := post.User.Name + " (" + post.User.Id + ")"
-				f.SetSheetRow(channel.Name, row, &[]interface{}{username, emoji.Sprint(post.Text), threadData, "", dt})
+				f.SetSheetRow(channel.Name, row, &[]interface{}{index, username, emoji.Sprint(post.Text), threadData, "", dt})
 
 				index++
 
@@ -195,8 +194,10 @@ func writeSheets(f *excelize.File, dirname string, channels []Channel, users []U
 
 					emojiText := ":" + r.Name + ":"
 					reactionsText := emoji.Sprint(emojiText + "(" + strconv.Itoa(r.Count) + ") - [" + strings.Join(reactionUsers, ",") + "]")
-					row = "A" + strconv.Itoa(index)
-					f.SetSheetRow(channel.Name, row, &[]interface{}{"", "", "", reactionsText, dt})
+
+					// excluding header (A2, A3...)
+					row = "A" + strconv.Itoa(index+1)
+					f.SetSheetRow(channel.Name, row, &[]interface{}{index, "", "", "", reactionsText, dt})
 
 					index++
 				}
