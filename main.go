@@ -90,6 +90,11 @@ func getUserNameList(users []User, f func(User) string) []string {
 	return r
 }
 
+func getRow(index int) string {
+	// excluding header (A2, A3...)
+	return "A" + strconv.Itoa(index+1)
+}
+
 func writeSheets(f *excelize.File, dirname string, channels []Channel, users []User) {
 	// write row of cell
 	var row string
@@ -176,8 +181,7 @@ func writeSheets(f *excelize.File, dirname string, channels []Channel, users []U
 					threadData = "Thread parent user:\n" + users[idx].Name
 				}
 
-				// excluding header (A2, A3...)
-				row = "A" + strconv.Itoa(index+1)
+				row = getRow(index)
 				username := post.User.Name + " (" + post.User.Id + ")"
 				f.SetSheetRow(channel.Name, row, &[]interface{}{index, username, emoji.Sprint(post.Text), threadData, "", dt})
 
@@ -195,8 +199,7 @@ func writeSheets(f *excelize.File, dirname string, channels []Channel, users []U
 					emojiText := ":" + r.Name + ":"
 					reactionsText := emoji.Sprint(emojiText + "(" + strconv.Itoa(r.Count) + ") - [" + strings.Join(reactionUsers, ",") + "]")
 
-					// excluding header (A2, A3...)
-					row = "A" + strconv.Itoa(index+1)
+					row = getRow(index)
 					f.SetSheetRow(channel.Name, row, &[]interface{}{index, "", "", "", reactionsText, dt})
 
 					index++
