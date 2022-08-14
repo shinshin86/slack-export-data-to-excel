@@ -143,10 +143,14 @@ func writeSheets(f *excelize.File, dirname string, channels []Channel, users []U
 			}
 
 			var posts []Post
+			var reactionsText string
 
 			json.Unmarshal(raw, &posts)
 
 			for _, post := range posts {
+				// init
+				reactionsText = ""
+
 				// get user
 				userIndex := slices.IndexFunc(users, func(user User) bool { return user.Id == post.UserId })
 
@@ -209,12 +213,6 @@ func writeSheets(f *excelize.File, dirname string, channels []Channel, users []U
 					threadPosts = append(threadPosts[:parentIdx], threadPosts[parentIdx+1:]...)
 				}
 
-				row = getRow(index)
-				username := post.User.Name + " (" + post.User.Id + ")"
-				f.SetSheetRow(channel.Name, row, &[]interface{}{index, username, emoji.Sprint(post.Text), threadData, "", dt})
-
-				index++
-
 				for _, r := range post.Reactions {
 					// add Reaction.Users
 					for _, id := range r.UserIdList {
@@ -225,13 +223,19 @@ func writeSheets(f *excelize.File, dirname string, channels []Channel, users []U
 					reactionUsers := getUserNameList(r.Users, func(u User) string { return u.Name })
 
 					emojiText := ":" + r.Name + ":"
-					reactionsText := emoji.Sprint(emojiText + "(" + strconv.Itoa(r.Count) + ") - [" + strings.Join(reactionUsers, ",") + "]")
 
-					row = getRow(index)
-					f.SetSheetRow(channel.Name, row, &[]interface{}{index, "", "", "", reactionsText, dt})
-
-					index++
+					if reactionsText != "" {
+						reactionsText = reactionsText + "\n" + emoji.Sprint(emojiText+"("+strconv.Itoa(r.Count)+") - ["+strings.Join(reactionUsers, ",")+"]")
+					} else {
+						reactionsText = emoji.Sprint(emojiText + "(" + strconv.Itoa(r.Count) + ") - [" + strings.Join(reactionUsers, ",") + "]")
+					}
 				}
+
+				row = getRow(index)
+				username := post.User.Name + " (" + post.User.Id + ")"
+				f.SetSheetRow(channel.Name, row, &[]interface{}{index, username, emoji.Sprint(post.Text), threadData, reactionsText, dt})
+
+				index++
 			}
 		}
 	}
